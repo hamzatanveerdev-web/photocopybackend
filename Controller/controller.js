@@ -61,7 +61,13 @@ async function EnrollerdCourses(req, res) {
 
 // teacher course data get function
 async function TeacherCoursesnotes(req, res) {
-    const { courseNo, section, DISCIPLINE, sem_no } = req.body;
+    const courseNo = req.query.Course_no;
+     const section= req.query.SECTION;
+      const  DISCIPLINE = req.query.DISCIPLINE;
+       const  sem_no  = req.query.Semester_no;
+       console.log(courseNo, section, DISCIPLINE, sem_no);
+
+
     
    
     if (!courseNo || !section || !DISCIPLINE || !sem_no) {
@@ -75,17 +81,17 @@ async function TeacherCoursesnotes(req, res) {
         await sql.connect(config);
         
         const result = await sql.query`
-            SELECT DISTINCT
-                a.COURSE_NO,
-                e.Emp_no,
-                e.Emp_firstname + ' ' + e.Emp_lastname AS Teacher_Name
-            FROM ALLOCATE a
-            JOIN EMPMTR e ON e.Emp_no = a.Emp_no
-            WHERE a.COURSE_NO = ${courseNo}
+          SELECT DISTINCT a.COURSE_NO,n.week_no,n.no_of_pages,n.title,n.note_id,e.Emp_no,
+                e.Emp_firstname + ' ' + e.Emp_lastname AS Teacher_Name FROM ALLOCATE a 
+                JOIN EMPMTR e ON e.Emp_no = a.Emp_no
+			    JOIN Notes n On a.EMP_NO=n.Emps_no
+			    and n.Course_no=a.COURSE_NO
+			    and n.Regs_No IS null
+                WHERE a.COURSE_NO = ${courseNo}
                 AND a.SECTION = ${section}
                 AND a.DISCIPLINE = ${DISCIPLINE}
                 AND a.SEMESTER_NO = ${sem_no}
-        `;
+         `;
         
         res.json({ 
             success: true, 
@@ -109,6 +115,68 @@ async function TeacherCoursesnotes(req, res) {
 }
 
 
+// stationery product data get function 
+const Stationery = async (req, res) => {
+    try {
+        await sql.connect(config);
+        const result = await sql.query`SELECT * FROM Stationery`;
+        res.json({ success: true, message: 'Products fetched successfully', data: result.recordset });
+    }
+    catch (err) {
+        console.error('Database error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    } finally {
+      
+            await sql.close();
+           }
+};
+
+// student wallet data get function
+const Wallet = async (req, res) => {
+    const regno = req.query.reg_no;
+    try {
+        console.log(regno);
+        await sql.connect(config);
+        const result = await sql.query`select balance from Wallet where user_ref_id=${regno}`;
+        if (result.recordset.length > 0) {
+            res.json({ success: true, message: 'Wallet balance fetched successfully', data: result.recordset[0].balance });
+        } else {
+            res.json({ success: false, message: 'No wallet information found for this student' });
+        }
+    }
+    catch (err) {
+        console.error('Database error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    } finally {
+        await sql.close();
+    }
+};
+
+//notesprint request function first data get of notes then user fill print data i make this to get notes data 
+
+const NotesPrintRequest = async (req, res) => {
+    const course_no = req.query.course_no;
+    const note_id = req.query.note_id;
+    try {
+        console.log(course_no, note_id);
+        await sql.connect(config);
+        const result = await sql.query`select distinct n.title ,c.Course_desc, n.week_no,n.no_of_pages , e.Emp_firstname+''+e.Emp_lastname as Emp_fullname from Notes n join EMPMTR e on n.Emps_no=e.Emp_no join CRSMTR c on c.Course_no=n.Course_no where n.Course_no=${course_no} and note_id=${note_id}`;
+        if (result.recordset.length > 0) {
+            console.log(result.recordset[0]);
+            res.json({ success: true, message: 'Note details fetched successfully', data: result.recordset[0] });
+        } else {    
+            res.json({ success: false, message: 'No note information found for this course and note ID' });
+        }
+    }
+    catch (err) {
+        console.error('Database error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    } finally {
+        await sql.close();
+    }
+};
 
 
-module.exports = { Login, EnrollerdCourses,TeacherCoursesnotes };
+
+
+module.exports = { Login, EnrollerdCourses,TeacherCoursesnotes, Stationery,Wallet ,NotesPrintRequest};
