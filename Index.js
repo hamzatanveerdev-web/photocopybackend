@@ -8,7 +8,7 @@ const PORT = 3000;
 
 app.use(cors()); // Enable CORS for all routes
 app.use(express.json()); // Parse JSON bodies
-
+app.use("/uploads", express.static("uploads"));
 app.use('/api', routes); 
 
 
