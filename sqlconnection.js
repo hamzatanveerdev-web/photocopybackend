@@ -1,4 +1,3 @@
-const sql = require('mssql/msnodesqlv8');
 
 const config = {
   server: 'DESKTOP-I877JG5\\SQLEXPRESS',
@@ -9,5 +8,5 @@ const config = {
     trustServerCertificate: true
   }
 };
-
+ 
 module.exports = config;

@@ -1,13 +1,12 @@
 const sql = require('mssql/msnodesqlv8');
 const config = require('./sqlconnection');
 
-const poolPromise = new sql.ConnectionPool(config)
-  .connect()
-  .then(pool => {
+const poolPromise = new sql.ConnectionPool(config).connect().then(pool =>
+   {
     console.log("✅ Database Connected");
     return pool;
-  })
-  .catch(err => {
+  }).catch(err =>
+   {
     console.log("❌ DB Connection Failed:", err);
   });
 
