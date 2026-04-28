@@ -2,51 +2,6 @@ const { poolPromise } = require("../db");
 const multer = require("multer");
 const fs = require("fs");
 
-// teacher course data get function
-async function TeacherCoursesnotes(req, res) {
-  const courseNo = req.query.Course_no;
-  const section = req.query.SECTION;
-  const DISCIPLINE = req.query.DISCIPLINE;
-  const sem_no = req.query.Semester_no;
-  console.log(courseNo, section, DISCIPLINE, sem_no);
-
-  if (!courseNo || !section || !DISCIPLINE || !sem_no) {
-    return res.status(400).json({
-      success: false,
-      message: "Missing required fields",
-    });
-  }
-
-  try {
-    const pool = await poolPromise;
-
-    const result = await pool.request().query`
-          SELECT DISTINCT a.COURSE_NO,n.week_no,n.no_of_pages,n.title,n.note_id,e.Emp_no,
-                e.Emp_firstname + ' ' + e.Emp_lastname AS Teacher_Name FROM ALLOCATE a 
-                JOIN EMPMTR e ON e.Emp_no = a.Emp_no
-			    JOIN Notes n On a.EMP_NO=n.Emps_no
-			    and n.Course_no=a.COURSE_NO
-			    and n.Regs_No IS null
-                WHERE a.COURSE_NO = ${courseNo}
-                AND a.SECTION = ${section}
-                AND a.DISCIPLINE = ${DISCIPLINE}
-                AND a.SEMESTER_NO = ${sem_no}
-         `;
-
-    res.json({
-      success: true,
-      message: "Courses fetched successfully",
-      data: result.recordset,
-    });
-  } catch (err) {
-    console.error("Database error:", err);
-    res.status(500).json({
-      success: false,
-      error: err.message,
-    });
-  }
-}
-
 //teacher enroll course show
 const teacherenrollcourse = async (req, res) => {
   const user_id = req.query.user_id;
@@ -329,7 +284,7 @@ const getBrilliantStudentNotesRequest = async (req, res) => {
       SELECT distinct bsn.*, s.St_firstname + ' ' + s.St_lastname AS StudentName, c.Course_desc
       FROM brilliantStudentNotes bsn
       LEFT JOIN STMTR s ON s.Reg_No = bsn.StudentId
-      LEFT JOIN CRSMTR c ON c.course_no = bsn.CourseId
+      LEFT JOIN CRSMTR c ON c.course_no = bsn.Course_no
       WHERE bsn.TeacherId = '${emp_no}'
      and bsn.Status='Pending'
       ORDER BY bsn.CreatedAt DESC
@@ -365,16 +320,16 @@ const approveStudentNotes = async (req, res) => {
     const result = await pool.request().query(`
       UPDATE brilliantStudentNotes 
       SET Status = 'Approved'
-      WHERE Id = '${id}'
+      WHERE note_id = '${id}'
     `);
 
     const notifystudent = await pool.request().query(`
-     select notify_std ,StudentId ,CourseId ,TeacherId ,Title from brilliantStudentNotes where Id = '${id}'
+     select notify_std ,StudentId ,Course_no ,TeacherId ,title from brilliantStudentNotes where note_id = '${id}'
     `);
      const Emp_no = notifystudent.recordset[0].TeacherId;
-      const Course_no = notifystudent.recordset[0].CourseId;
+      const Course_no = notifystudent.recordset[0].Course_no;
       const StudentId = notifystudent.recordset[0].StudentId;
-      const Title = notifystudent.recordset[0].Title;
+      const Title = notifystudent.recordset[0].title;
  let msg = `${Title} note for Course ${Course_no} has been approved by ${Emp_no}`;
 
 await pool.request().query(`
@@ -434,7 +389,7 @@ const rejectStudentNotes = async (req, res) => {
     const result = await pool.request().query(`
       UPDATE brilliantStudentNotes 
       SET Status = 'Rejected'
-      WHERE Id = '${id}'
+      WHERE note_id = '${id}'
     `);
 
     return res.status(200).json({
@@ -449,9 +404,71 @@ const rejectStudentNotes = async (req, res) => {
     });
   }
 };
+//remove cencel brilliant student
+const removeBrilliantStudent = async (req, res) => {
+  const { reg_no } = req.body;
 
+  if (!reg_no) {
+    return res.status(400).json({
+      success: false,
+      message: "Note ID required",
+    });
+  }
+
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().query(`
+      DELETE FROM  BrilliantStudents 
+      WHERE StudentId = '${reg_no}'
+    `);
+
+    return res.status(200).json({
+      success: true,
+      message: "Student notes removed successfully",
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+
+
+//delete teacher course note
+const deletenotes=async(req,res)=>{
+  const id = req.query.id;
+
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      message: "Note ID required",
+    });
+  }
+
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().query(`
+      DELETE FROM Notes
+      WHERE note_id = '${id}'
+    `);
+
+    return res.status(200).json({
+      success: true,
+      message: "Note deleted successfully",
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+}
 module.exports = {
-  TeacherCoursesnotes,
+
   teacherenrollcourse,
   courseNotes,
   files,
@@ -461,4 +478,6 @@ module.exports = {
   getBrilliantStudentNotesRequest,
   approveStudentNotes,
   rejectStudentNotes,
+  removeBrilliantStudent,
+  deletenotes
 };

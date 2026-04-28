@@ -10,15 +10,17 @@ const {
 
 const {
   EnrollerdCourses,
+  TeacherCoursesnotes,
   ordercount,
   orderdetail,
   isbrilliant,
+  getBrilliantNotes,
   getBrilliantCourses,
   uploadBrilliantNotes,
 } = require('../Controller/studentController');
 
 const {
-  TeacherCoursesnotes,
+  
   teacherenrollcourse,
   courseNotes,
   files,
@@ -28,6 +30,8 @@ const {
   getBrilliantStudentNotesRequest,
   rejectStudentNotes,
   approveStudentNotes,
+  deletenotes,
+  removeBrilliantStudent,
 } = require('../Controller/teacherController');
 
 const {
@@ -71,11 +75,12 @@ const {
 // Route for fetching users
 router.get('/Login', Login);
 router.get('/EnrolledCourses', EnrollerdCourses);
-router.get('/TeacherCoursesnotes', TeacherCoursesnotes);
+router.get('/viewCoursesnotes', TeacherCoursesnotes);
 router.get('/NotesPrintRequestdetails', NotesPrintRequest);
 router.get('/Wallet', Wallet);
 router.get('/transactions',transactions)
 router.get('/Stationery', Stationery);
+router.get('/getBrilliantNotes',getBrilliantNotes)
 router.get('/Stationery/:id', Stationerygetbyid);
 router.put('/Stationery/:id', upload.single("image"), editstationery);
 router.get('/ordercount', ordercount);
@@ -86,7 +91,6 @@ router.post('/updatewalletamount',updatewalletamount)
 router.post('/stationerybuyrequest',stationerybuyrequest)
 router.get('/isbrilliant',isbrilliant);
 router.get('/getBrilliantCourses',getBrilliantCourses);
- 
 router.post('/addstationery', upload.single("image"), addstationery)
 router.post('/uploadBrilliantNotes', upload.single("file"), uploadBrilliantNotes)
 router.get('/getHistory',getHistory)
@@ -120,5 +124,7 @@ router.post('/uplodcoursenotes', files.single("file"), uploadCourseNotes);
 router.post('/markbrilliant',markbrilliant);
 router.get('/getBrilliantStudentNotesRequest',getBrilliantStudentNotesRequest);
 router.put('/approveStudentNotes',approveStudentNotes);
+router.put('/removeBrilliantStudent',removeBrilliantStudent);
 router.put('/rejectStudentNotes',rejectStudentNotes);
+router.delete('/deletenotes',deletenotes);
 module.exports = router;

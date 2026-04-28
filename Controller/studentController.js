@@ -39,6 +39,58 @@ async function EnrollerdCourses(req, res) {
   }
 }
 
+
+// teacher course data get function
+async function TeacherCoursesnotes(req, res) {
+  const courseNo = req.query.Course_no;
+  const section = req.query.SECTION;
+  const DISCIPLINE = req.query.DISCIPLINE;
+  const sem_no = req.query.Semester_no;
+  console.log(courseNo, section, DISCIPLINE, sem_no);
+
+  if (!courseNo || !section || !DISCIPLINE || !sem_no) {
+    return res.status(400).json({
+      success: false,
+      message: "Missing required fields",
+    });
+  }
+
+  try {
+    const pool = await poolPromise;
+
+    const result = await pool.request().query`
+          SELECT DISTINCT a.COURSE_NO,n.week_no,n.no_of_pages,n.title,n.note_id,e.Emp_no,
+                e.Emp_firstname + ' ' + e.Emp_lastname AS Teacher_Name FROM ALLOCATE a 
+                JOIN EMPMTR e ON e.Emp_no = a.Emp_no
+          JOIN Notes n On a.EMP_NO=n.Emps_no
+          and n.Course_no=a.COURSE_NO
+          and n.Regs_No IS null
+                WHERE a.COURSE_NO = ${courseNo}
+                AND a.SECTION = ${section}
+                AND a.DISCIPLINE = ${DISCIPLINE}
+                AND a.SEMESTER_NO = ${sem_no}
+         `;
+
+
+         const studentnotesfind=await pool.request().query(`
+          
+          select bsn.Course_no,bsn.note_id ,bsn.StudentId,s.st_firstname+' '+s.st_lastname as fullname,s.Final_course,s.Section, bsn.TeacherId,bsn.week_no,bsn.no_of_pages ,bsn.title,bsn.semester  from brilliantStudentNotes bsn left  join STMTR s on s.Reg_no=bsn.StudentId   where Course_no='${courseNo}' 
+          `)
+    res.json({
+      success: true,
+      message: "Courses fetched successfully",
+      teachernotes: result.recordset,
+       studentnotes:studentnotesfind.recordset
+    });
+  } catch (err) {
+    console.error("Database error:", err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+}
+
 const ordercount = async (req, res) => {
   const user_id = req.query.user_id;
 
@@ -74,30 +126,45 @@ const orderdetail = async (req, res) => {
 
     const result = await pool.request()
 
-  .query(`SELECT  o.order_id,
-        COALESCE(s.St_firstname + ' ' + s.St_lastname, e.Emp_firstname + ' ' + e.Emp_lastname) AS fullname,
-        o.user_id, o.created_at, o.status,o.user_type,
-        COALESCE(ns.title, pn.title) AS title,
-        COALESCE(ns.Course_no, '-') AS course_no,
-        COALESCE(ns.week_no, '-') AS week_no,
-        n.copies,
-        n.color_mode,
-        n.print_sides,
-        n.pickup_time,
-        CASE 
-            WHEN ns.note_id IS NOT NULL THEN 'Course Note'
-            WHEN pn.personal_note_id IS NOT NULL THEN 'Personal Note'
-           
-        END AS note_type
-    FROM ORDERS o
-    INNER JOIN Note_Print_detail n ON o.order_id = n.order_id
-    LEFT JOIN STMTR s ON s.Reg_No = o.user_id
-    LEFT JOIN EMPMTR e ON e.Emp_no = o.user_id
-    LEFT JOIN Notes ns ON ns.note_id = n.note_id
-    LEFT JOIN PersonalNotes pn ON pn.personal_note_id = n.personal_note_id
-    WHERE o.user_id='${user_id}'
-      AND o.status NOT IN ('rejected', 'delivered')
-    ORDER BY o.created_at DESC;
+  .query(`SELECT  
+    o.order_id,
+    COALESCE(s.St_firstname + ' ' + s.St_lastname, e.Emp_firstname + ' ' + e.Emp_lastname) AS fullname,
+    o.user_id,
+    o.created_at,
+    o.status,
+    o.user_type,
+
+    COALESCE(ns.title, pn.title, bs.title) AS title,
+    COALESCE(ns.Course_no, '-') AS course_no,
+    COALESCE(ns.week_no, '-') AS week_no,
+
+    n.copies,
+    n.color_mode,
+    n.print_sides,
+    n.pickup_time,
+
+    CASE 
+        WHEN n.teacher_note_id IS NOT NULL THEN 'Course Note'
+        WHEN n.student_note_id IS NOT NULL THEN 'Student Note'
+        WHEN n.personal_note_id IS NOT NULL THEN 'Personal Note'
+        ELSE 'Unknown'
+    END AS note_type
+
+FROM ORDERS o
+INNER JOIN Note_Print_detail n ON o.order_id = n.order_id
+
+LEFT JOIN STMTR s ON s.Reg_No = o.user_id
+LEFT JOIN EMPMTR e ON e.Emp_no = o.user_id
+
+LEFT JOIN Notes ns ON ns.note_id = n.teacher_note_id
+LEFT JOIN brilliantStudentNotes bs ON bs.note_id = n.student_note_id
+LEFT JOIN PersonalNotes pn ON pn.personal_note_id = n.personal_note_id
+
+WHERE o.user_id = '${user_id}'
+  AND o.status NOT IN ('rejected', 'delivered')
+
+ORDER BY o.created_at DESC;
+
 `);
     const resultdata = await pool.request().query(`
         SELECT 
@@ -256,7 +323,7 @@ const uploadBrilliantNotes = async (req, res) => {
      const pool =await poolPromise; 
   
      const result = await pool.request().query(`
-     insert into brilliantStudentNotes (StudentId, CourseId, TeacherId, semester, FilePath,week_no,no_of_pages, Title, Status,notify_std)
+     insert into brilliantStudentNotes (StudentId, Course_no, TeacherId, semester, FilePath,week_no,no_of_pages, title, Status,notify_std)
      values ('${reg_no}', '${Course_no}', '${Emp_no}', ${semester_no}, '${file}', '${week_no}', '${no_of_pages}', '${title}', 'Pending','${notify_students}')
      `);
      return res.json({
@@ -272,11 +339,47 @@ const uploadBrilliantNotes = async (req, res) => {
     });
   }
 }
+const getBrilliantNotes = async (req, res) => {
+  const reg_no = req.query.reg_no;
+
+  if (!reg_no) {
+    return res.status(400).json({
+      success: false,
+      message: "Registration number required",
+    });
+  }
+
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().query(`
+      SELECT distinct bsn.*, c.Course_desc, e.Emp_firstname + ' ' + e.Emp_lastname AS TeacherName
+      FROM brilliantStudentNotes bsn
+      LEFT JOIN CRSMTR c ON c.course_no = bsn.Course_no
+      LEFT JOIN EMPMTR e ON e.Emp_no = bsn.TeacherId
+      WHERE bsn.StudentId = '${reg_no}'
+      ORDER BY bsn.CreatedAt DESC
+    `);
+
+    return res.json({
+      success: true,
+      message: "Brilliant student notes fetched successfully",
+      data: result.recordset,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
 module.exports = {
+    TeacherCoursesnotes,
   EnrollerdCourses,
   ordercount,
   orderdetail,
   isbrilliant,
   getBrilliantCourses,
   uploadBrilliantNotes,
+  getBrilliantNotes
 };

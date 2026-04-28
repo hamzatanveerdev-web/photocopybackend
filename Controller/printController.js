@@ -24,7 +24,7 @@ const NotesPrintRequest = async (req, res) => {
     const pool = await poolPromise;
 
     const result = await pool.request()
-      .query`select distinct n.note_id, n.title ,c.Course_desc, n.week_no,n.no_of_pages , e.Emp_firstname+''+e.Emp_lastname as Emp_fullname from Notes n join EMPMTR e on n.Emps_no=e.Emp_no join CRSMTR c on c.Course_no=n.Course_no where n.Course_no=${course_no} and note_id=${note_id}`;
+      .query`select distinct n.note_id, n.title ,c.Course_desc, n.week_no,n.no_of_pages , e.Emp_firstname+''+e.Emp_lastname as fullname from Notes n join EMPMTR e on n.Emps_no=e.Emp_no join CRSMTR c on c.Course_no=n.Course_no where n.Course_no=${course_no} and note_id=${note_id}`;
     if (result.recordset.length > 0) {
       console.log(result.recordset[0]);
       res.json({
@@ -33,10 +33,21 @@ const NotesPrintRequest = async (req, res) => {
         data: result.recordset[0],
       });
     } else {
+    const result = await pool.request()
+      .query`select distinct n.note_id as note_id, n.title as title ,c.Course_desc, n.week_no,n.no_of_pages , s.st_firstname+''+s.st_lastname as fullname from brilliantStudentNotes n join STMTR s on n.StudentId=s.Reg_no join CRSMTR c on c.Course_no=n.Course_no where n.Course_no=${course_no} and note_id=${note_id}`;
+    if (result.recordset.length > 0) {
+      console.log(result.recordset[0]);
       res.json({
-        success: false,
-        message: "No note information found for this course and note ID",
+        success: true,
+        message: "Note details fetched successfully",
+        data: result.recordset[0],
       });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: "Note not found",
+      });
+    }
     }
   } catch (err) {
     console.error("Database error:", err);
@@ -56,8 +67,37 @@ const CreateNotePrintRequest = async (req, res) => {
     order_type,
   } = req.body;
 
+  
   try {
     const pool = await poolPromise;
+      
+    let teacher_note_id = null;
+let student_note_id = null;
+
+// check Notes table
+const teacherCheck = await pool.request().query`
+  SELECT note_id FROM Notes WHERE note_id = ${note_id}
+`;
+
+if (teacherCheck.recordset.length > 0) {
+  teacher_note_id = note_id;
+} else {
+  const studentCheck = await pool.request().query`
+    SELECT note_id FROM brilliantStudentNotes WHERE note_id = ${note_id}
+  `;
+
+  if (studentCheck.recordset.length > 0) {
+    student_note_id = note_id;
+  } else {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid note_id",
+    });
+  }
+}
+
+
+
 
     if ((student_id && emp_no) || (!student_id && !emp_no)) {
       return res.status(400).json({
@@ -80,11 +120,12 @@ const CreateNotePrintRequest = async (req, res) => {
 
     // INSERT DETAILS
     await pool.request().query(`
-            INSERT INTO Note_Print_detail
-            (order_id, note_id, color_mode, print_sides, copies, pickup_time)
-            VALUES
-            (${order_id}, ${note_id}, '${color_mode}', '${print_sides}', ${copies}, '${pickup_time}');
-        `);
+  INSERT INTO Note_Print_detail
+  (order_id, teacher_note_id, student_note_id, color_mode, print_sides, copies, pickup_time)
+  VALUES
+  ( ${order_id}, ${teacher_note_id || "NULL"}, ${student_note_id || "NULL"}, '${color_mode}', '${print_sides}', ${copies}, '${pickup_time}'  )
+`);
+
 
     return res.json({
       success: true,

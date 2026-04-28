@@ -11,7 +11,9 @@ app.use(express.json()); // Parse JSON bodies
 app.use("/uploads", express.static("uploads"));
 app.use('/api', routes); 
 
-
+app.get('/', (req, res) => {
+    res.send('Hello World!');
+});
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
