@@ -113,7 +113,7 @@ router.get('/allordercount',allordercount)
 router.put('/updateorderstatus',updateorderstatus)
 
 
-
+   
 //teacher 
 router.get('/teacherlogin',teacherlogin)
 router.get('/teacherenrollcourse',teacherenrollcourse)
@@ -128,3 +128,8 @@ router.put('/removeBrilliantStudent',removeBrilliantStudent);
 router.put('/rejectStudentNotes',rejectStudentNotes);
 router.delete('/deletenotes',deletenotes);
 module.exports = router;
+
+
+
+
+

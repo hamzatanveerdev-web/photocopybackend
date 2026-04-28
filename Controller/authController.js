@@ -80,6 +80,7 @@ async function ShopkeeperLogin(req, res) {
       .query(
         `SELECT shopkeeper_id, name, email FROM Shopkeeper WHERE name='${name}' AND password='${password}'`,
       );
+     
     if (result.recordset.length > 0) {
       res.status(200).json({
         success: true,
@@ -104,7 +105,7 @@ async function Login(req, res) {
     return res.status(400).json({
       success: true,
       message: "Name and Arid number missing ",
-    });
+    }); 
   }
 
   if (!username) {
