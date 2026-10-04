@@ -96,7 +96,7 @@ async function ShopkeeperLogin(req, res) {
       .request().query(`
         SELECT id, photocopier_name, shop_name, email
         FROM Photocopier
-        WHERE photocopier_name = '${name}' AND password = '${password}'
+        WHERE photocopier_name = '${name}' AND password = ${password}
       `); 
     if (result.recordset.length > 0) {
       res.status(200).json({
@@ -122,13 +122,10 @@ async function Login(req, res) {
       success: false,
       message: "Name and Arid number missing ",
     });
-  }
- 
-  if (!username) {
-    return res.status(400).json({
+s(400).json({
       success: false,
-      message: "Name is missing ",
-    });
+      message: "Name and Arid number missing ",
+    }); 
   }
 
   if (!regno) {
@@ -146,7 +143,7 @@ async function Login(req, res) {
       .request().query(
         `SELECT Reg_no,Semester_no, St_firstname+' '+St_lastname as fullname FROM STMTR WHERE REG_NO = '${regno}' `,
       );
-    if (result.recordset.length > 0) {
+    if (esult.reordset.length > 0) {
       res.status(200).json({
         success: true,
         message: "Login successful",

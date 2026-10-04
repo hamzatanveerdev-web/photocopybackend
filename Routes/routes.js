@@ -137,7 +137,7 @@ router.get('/allordercount',allordercount)
 router.put('/updateorderstatus',updateorderstatus)
 
 
-
+   
 //teacher 
 router.get('/teacherlogin',teacherlogin)
 router.get('/teacherenrollcourse',teacherenrollcourse)
@@ -154,6 +154,7 @@ router.delete('/deletenotes',deletenotes);
 router.get('/teachernotescount',countTeacherNotes);
 
 module.exports = router;
+
       
 
 //admin routes
@@ -168,4 +169,9 @@ router.post('/parentlogin', loginparent);
 router.get('/enrolledchildren', getEnrolledChildren);
 router.post('/addwalletamount', addWalletAmount);
 router.get('/recenttransactions', getRecentTransactions); 
+
+
+
+
+
 
