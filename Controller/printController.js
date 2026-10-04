@@ -4,10 +4,10 @@ const fs = require("fs");
 
 const filesstorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    if (!fs.existsSync("files")) {
-      fs.mkdirSync("files");
+    if (!fs.existsSync("uploads")) {
+      fs.mkdirSync("uploads");
     }
-    cb(null, "files/");
+    cb(null, "uploads/");
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + "-" + file.originalname);
@@ -62,10 +62,11 @@ const CreateNotePrintRequest = async (req, res) => {
     note_id,
     color_mode,
     print_sides,
+    photocopier_id,
     copies,
     pickup_time,
     order_type,
-  } = req.body;
+  } = req.body; 
 
   
   try {
@@ -81,6 +82,7 @@ const teacherCheck = await pool.request().query`
 
 if (teacherCheck.recordset.length > 0) {
   teacher_note_id = note_id;
+
 } else {
   const studentCheck = await pool.request().query`
     SELECT note_id FROM brilliantStudentNotes WHERE note_id = ${note_id}
@@ -88,10 +90,11 @@ if (teacherCheck.recordset.length > 0) {
 
   if (studentCheck.recordset.length > 0) {
     student_note_id = note_id;
+
   } else {
     return res.status(400).json({
       success: false,
-      message: "Invalid note_id",
+      message: "Invalid note_id",  
     });
   }
 }
@@ -110,8 +113,8 @@ if (teacherCheck.recordset.length > 0) {
     let user_id = student_id ? student_id : emp_no;
     // INSERT ORDER
     const result = await pool.request().query(`
-            INSERT INTO ORDERS (user_id, user_type, order_type)
-          VALUES ('${user_id}' ,'${user_type}', '${order_type}');
+            INSERT INTO ORDERS (user_id, user_type, order_type, photocopier_id)
+          VALUES ('${user_id}' ,'${user_type}', '${order_type}', '${photocopier_id}');
 
             SELECT SCOPE_IDENTITY() AS order_id
         `);
@@ -123,7 +126,7 @@ if (teacherCheck.recordset.length > 0) {
   INSERT INTO Note_Print_detail
   (order_id, teacher_note_id, student_note_id, color_mode, print_sides, copies, pickup_time)
   VALUES
-  ( ${order_id}, ${teacher_note_id || "NULL"}, ${student_note_id || "NULL"}, '${color_mode}', '${print_sides}', ${copies}, '${pickup_time}'  )
+  ( ${order_id}, ${teacher_note_id}, ${student_note_id}, '${color_mode}', '${print_sides}', ${copies}, '${pickup_time}'  )
 `);
 
 

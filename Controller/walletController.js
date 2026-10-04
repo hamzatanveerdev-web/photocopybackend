@@ -2,13 +2,13 @@ const { poolPromise } = require("../db");
 const sql = require("mssql/msnodesqlv8");
 //wallet 
 const Wallet = async (req, res) => {
-  const regno = req.query.user_id
+  const user_id = req.query.user_id
   try {
-    console.log(regno);
+    console.log(user_id);
     const pool = await poolPromise;
 
     const result = await pool.request()
-      .query`select balance from wallet where user_ref_id=${regno}`;
+      .query`select balance from wallet where user_ref_id=${user_id}`;
     if (result.recordset.length > 0) {
       res.json({
         success: true,
@@ -28,16 +28,10 @@ const Wallet = async (req, res) => {
 };
 
 const updatewalletamount = async (req, res) => {
-  const { Reg_no, emp_id, amount, description } = req.body;
+  const { user_id, amount, description } = req.body;
   const shopkeeper_id = 1;
 
-  let user_id;
-
-  if (Reg_no) {
-    user_id = Reg_no;
-  } else if (emp_id) {
-    user_id = emp_id;
-  } else {
+  if (!user_id)  {
     return res.status(400).json({
       success: false,
       message: "User ID required",

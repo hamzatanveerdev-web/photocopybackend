@@ -1,6 +1,7 @@
 const { poolPromise } = require("../db");
 
 const getallorders = async (req, res) => {
+  const photocopier_id = req.query.photocopier_id;
   try {
     const pool = await poolPromise;
 
@@ -15,7 +16,7 @@ const getallorders = async (req, res) => {
 
     COALESCE(ns.title, bs.title, pn.title) AS title,
     COALESCE(ns.Course_no, '-') AS course_no,
-    COALESCE(ns.week_no, '-') AS week_no,
+    COALESCE(ns.week_no, bs.week_no) AS week_no,
 
     n.copies,
     n.color_mode,
@@ -50,8 +51,10 @@ LEFT JOIN PersonalNotes pn
     ON pn.personal_note_id = n.personal_note_id  
 
 WHERE o.status NOT IN ('rejected', 'delivered')
-
+and o.photocopier_id='${photocopier_id}'
 ORDER BY o.created_at ASC;
+
+
 
         `);
 
@@ -301,6 +304,8 @@ const getHistory = async (req, res) => {
     n.pickup_time,
 
     COALESCE(ns.title, bs.title, pn.title) AS title,
+
+      COALESCE(ns.file_url, bs.FilePath, pn.file_path) AS file_url,
     COALESCE(ns.Course_no, bs.Course_no, '-') AS course_no,
     COALESCE(ns.week_no, '-') AS week_no 
 

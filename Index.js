@@ -1,4 +1,5 @@
 // index.js
+//require('dotenv').config();
 const express = require('express');
 const sql = require('mssql/msnodesqlv8'); 
 const cors = require('cors');
@@ -8,13 +9,12 @@ const PORT = 3000;
 
 app.use(cors()); // Enable CORS for all routes
 app.use(express.json()); // Parse JSON bodies
-app.use("/uploads", express.static("uploads"));
+app.use("/uploads", express.static("uploads")); 
 app.use('/api', routes); 
 
 app.get('/', (req, res) => {
     res.send('Hello World!');
 });
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
 });
-

@@ -1,4 +1,6 @@
+const sql = require("mssql/msnodesqlv8");
 const { poolPromise } = require("../db");
+
 
 // student course data get function
 async function EnrollerdCourses(req, res) {
@@ -6,21 +8,13 @@ async function EnrollerdCourses(req, res) {
   try {
     console.log(regno);
     const pool = await poolPromise;
-
+ 
     const result = await pool.request().query(`
     SELECT c.REG_NO, a.SEM_STATUS,c.Course_no,c.SECTION,c.CrsSemNo,(SELECT TOP 1 Course_desc FROM CRSMTR cr
          WHERE cr.Course_no = c.Course_no) AS Course_desc,a.Semester_no,c.DISCIPLINE
-    FROM Crsdtl c
-    JOIN Accgpa a 
-        ON c.REG_NO = a.REG_NO 
-        AND c.Semester_no = a.Semester_no
-    WHERE c.REG_NO = '${regno}'
-      AND a.Semester_no = (
-          SELECT MAX(Semester_no)
-          FROM Accgpa
-          WHERE REG_NO='${regno}'
-      )
-`);
+    FROM Crsdtl c JOIN Accgpa a  ON c.REG_NO = a.REG_NO  AND c.Semester_no = a.Semester_no  WHERE c.REG_NO = '${regno}'
+      AND a.Semester_no = (SELECT MAX(Semester_no) FROM Accgpa  WHERE REG_NO='${regno}')
+    `);
     if (result.recordset.length > 0) {
       res.json({
         success: true,
@@ -44,8 +38,10 @@ async function EnrollerdCourses(req, res) {
 async function TeacherCoursesnotes(req, res) {
   const courseNo = req.query.Course_no;
   const section = req.query.SECTION;
-  const DISCIPLINE = req.query.DISCIPLINE;
+  const DISCIPLINE = req.query.DISCIPLINE; 
   const sem_no = req.query.Semester_no;
+
+
   console.log(courseNo, section, DISCIPLINE, sem_no);
 
   if (!courseNo || !section || !DISCIPLINE || !sem_no) {
@@ -59,7 +55,7 @@ async function TeacherCoursesnotes(req, res) {
     const pool = await poolPromise;
 
     const result = await pool.request().query`
-          SELECT DISTINCT a.COURSE_NO,n.week_no,n.no_of_pages,n.title,n.note_id,e.Emp_no,
+          SELECT DISTINCT a.COURSE_NO,n.file_url,n.week_no,n.no_of_pages,n.title,n.note_id,e.Emp_no,
                 e.Emp_firstname + ' ' + e.Emp_lastname AS Teacher_Name FROM ALLOCATE a 
                 JOIN EMPMTR e ON e.Emp_no = a.Emp_no
           JOIN Notes n On a.EMP_NO=n.Emps_no
@@ -70,11 +66,13 @@ async function TeacherCoursesnotes(req, res) {
                 AND a.DISCIPLINE = ${DISCIPLINE}
                 AND a.SEMESTER_NO = ${sem_no}
          `;
+   
 
+         console.log("result---------------", result);
 
          const studentnotesfind=await pool.request().query(`
           
-          select bsn.Course_no,bsn.note_id ,bsn.StudentId,s.st_firstname+' '+s.st_lastname as fullname,s.Final_course,s.Section, bsn.TeacherId,bsn.week_no,bsn.no_of_pages ,bsn.title,bsn.semester  from brilliantStudentNotes bsn left  join STMTR s on s.Reg_no=bsn.StudentId   where Course_no='${courseNo}' 
+          select bsn.Course_no,bsn.note_id,bsn.FilePath ,bsn.StudentId,s.st_firstname+' '+s.st_lastname as fullname,s.Final_course,s.Section, bsn.TeacherId,bsn.week_no,bsn.no_of_pages ,bsn.title,bsn.semester  from brilliantStudentNotes bsn left  join STMTR s on s.Reg_no=bsn.StudentId   where Course_no='${courseNo}' and bsn.Status='Approved'
           `)
     res.json({
       success: true,
@@ -88,7 +86,7 @@ async function TeacherCoursesnotes(req, res) {
       success: false,
       error: err.message,
     });
-  }
+  }   
 }
 
 const ordercount = async (req, res) => {
@@ -133,6 +131,7 @@ const orderdetail = async (req, res) => {
     o.created_at,
     o.status,
     o.user_type,
+    ns.file_url,
 
     COALESCE(ns.title, pn.title, bs.title) AS title,
     COALESCE(ns.Course_no, '-') AS course_no,
@@ -326,6 +325,33 @@ const uploadBrilliantNotes = async (req, res) => {
      insert into brilliantStudentNotes (StudentId, Course_no, TeacherId, semester, FilePath,week_no,no_of_pages, title, Status,notify_std)
      values ('${reg_no}', '${Course_no}', '${Emp_no}', ${semester_no}, '${file}', '${week_no}', '${no_of_pages}', '${title}', 'Pending','${notify_students}')
      `);
+     const studentname=await pool.request().query(`
+      select st_firstname+' '+st_lastname as name from STMTR where reg_no='${reg_no}'`);
+      const name =studentname.recordset[0].name;
+
+    const noteMessage = `${name} has sent a request to approve the note "${title}" for Course ${Course_no}`;
+     await pool
+       .request()
+       .input("receiver_id", sql.VarChar(50), Emp_no)
+       .input("receiver_role", sql.VarChar(20), "teacher")
+       .input("sender_id", sql.VarChar(50), reg_no)
+       .input("sender_role", sql.VarChar(20), "student")
+       .input("notification_type", sql.VarChar(50), "NOTE_REQUEST")
+       .input("title", sql.VarChar(200), "Note Approval Request")
+       .input("message", sql.VarChar(500), noteMessage)
+       .input("reference_id", sql.Int, null)
+       .input("reference_type", sql.VarChar(50), "NOTE")
+       .input("is_read", sql.Bit, 0).query(`
+         INSERT INTO Notifications (
+           receiver_id, receiver_role, sender_id, sender_role,
+           notification_type, title, message, reference_id, reference_type, is_read
+         )
+         VALUES (
+           @receiver_id, @receiver_role, @sender_id, @sender_role,
+           @notification_type, @title, @message, @reference_id, @reference_type, @is_read
+         );
+       `);
+
      return res.json({
       success: true,
       message: "Notes uploaded successfully",
@@ -373,6 +399,125 @@ const getBrilliantNotes = async (req, res) => {
     });
   }
 };
+
+const getallphotocopier = async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().query(`
+      SELECT id, photocopier_name, shop_name,address,phone FROM Photocopier
+    `);
+    return res.json({
+      success: true,
+      message: "Photocopiers fetched successfully",
+      data: result.recordset,
+    });
+  }
+  catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+
+};
+
+//add student photocopier selection list in db 
+const studentphotocopiers= async (req,res)=>{
+
+  const {reg_no,photocopier_id,user_type}=req.body;
+  if (!reg_no || !photocopier_id || !user_type) {
+    return res.status(400).json({
+      success: false,
+      message: "Registration number, photocopier id, and user type required",
+    });
+  }
+  try {
+    const pool = await poolPromise;
+    await pool.request().query(` 
+      INSERT INTO usersphotocopiers (user_ids, photocopier_id, user_type)
+      VALUES ('${reg_no}', '${photocopier_id}', '${user_type}')
+    `); 
+    return res.json({
+      success: true,
+      message: "Photocopier selection saved successfully",
+    });
+  }
+  catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+}
+
+const studentphotocopiersget= async (req,res)=>{
+  const reg_no=req.query.reg_no;
+  const user_type=req.query.user_type;
+  if (!reg_no || !user_type) {
+    return res.status(400).json({
+      success: false,
+      message: "Registration number and user type required",
+    });
+  }
+  try {
+
+
+    const pool = await poolPromise;
+    const result = await pool.request().query(`
+      SELECT p.id,
+       p.shop_name
+      FROM Photocopier p
+      INNER JOIN usersphotocopiers up ON p.id = up.photocopier_id
+      WHERE up.user_ids = '${reg_no}' AND up.user_type = '${user_type}'
+    `);
+    return res.json({
+      success: true,
+
+      message: "Photocopiers fetched successfully",
+      data: result.recordset,
+    });
+  }
+  catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+}
+
+const deletestudentselectedphotocopier= async (req,res)=>{
+  const reg_no=req.query.reg_no;
+  const photocopier_id=req.query.photocopier_id;
+  const user_type=req.query.user_type;
+  if (!reg_no || !photocopier_id || !user_type) {
+    return res.status(400).json({
+      success: false,
+      message: "Registration number, photocopier id, and user type required",
+    });
+  }
+  try {
+    const pool = await poolPromise; 
+    await pool.request().query(` 
+      DELETE FROM usersphotocopiers WHERE user_ids = '${reg_no}' AND photocopier_id = '${photocopier_id}' AND user_type = '${user_type}'
+    `); 
+    return res.json({
+      success: true,
+      message: "Photocopier selection deleted successfully",
+    });
+  }
+  catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+}
+
+
 module.exports = {
     TeacherCoursesnotes,
   EnrollerdCourses,
@@ -381,5 +526,9 @@ module.exports = {
   isbrilliant,
   getBrilliantCourses,
   uploadBrilliantNotes,
-  getBrilliantNotes
+  getBrilliantNotes,
+  getallphotocopier,
+  studentphotocopiers,
+  deletestudentselectedphotocopier,
+  studentphotocopiersget
 };

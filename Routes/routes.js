@@ -6,6 +6,8 @@ const {
   teacherlogin,
   ShopkeeperLogin,
   Login,
+  registerShopkeeper,
+ // verifyShopkeeperOtp,
 } = require('../Controller/authController');
 
 const {
@@ -17,10 +19,14 @@ const {
   getBrilliantNotes,
   getBrilliantCourses,
   uploadBrilliantNotes,
+  getallphotocopier,
+  studentphotocopiers,
+  studentphotocopiersget,
+  deletestudentselectedphotocopier,
 } = require('../Controller/studentController');
 
 const {
-  
+
   teacherenrollcourse,
   courseNotes,
   files,
@@ -32,6 +38,7 @@ const {
   approveStudentNotes,
   deletenotes,
   removeBrilliantStudent,
+  countTeacherNotes,
 } = require('../Controller/teacherController');
 
 const {
@@ -67,22 +74,36 @@ const {
 } = require('../Controller/walletController');
 
 const {
-  sendnotificationbyshopkeeper,
+  createNotification,
+  sendnotification,
   receivednotification,
   removenotification,
 } = require('../Controller/notificationController');
 
+
+//admin
+const {  addParent, getParents, deleteParent,loginadmin } = require('../Controller/adminController');
+
+//parent
+const {loginparent,getEnrolledChildren,addWalletAmount,getRecentTransactions } = require('../Controller/parent');
+
 // Route for fetching users
-router.get('/Login', Login);
+router.post('/Login', Login);
+
+router.get('/getallphotocopier', getallphotocopier);
+router.post('/studentphotocopiers', studentphotocopiers);
+router.get('/studentphotocopiersget', studentphotocopiersget);
+
+router.delete('/deletestudentselectedphotocopier', deletestudentselectedphotocopier);
 router.get('/EnrolledCourses', EnrollerdCourses);
-router.get('/viewCoursesnotes', TeacherCoursesnotes);
-router.get('/NotesPrintRequestdetails', NotesPrintRequest);
+router.get('/viewCoursesnotes',  TeacherCoursesnotes);
+router.get('/NotesPrintRequestdetails', NotesPrintRequest); 
 router.get('/Wallet', Wallet);
-router.get('/transactions',transactions)
+router.get('/transactions',transactions) 
 router.get('/Stationery', Stationery);
 router.get('/getBrilliantNotes',getBrilliantNotes)
 router.get('/Stationery/:id', Stationerygetbyid);
-router.put('/Stationery/:id', upload.single("image"), editstationery);
+router.put('/Stationery/:id', upload.single("image"), editstationery); 
 router.get('/ordercount', ordercount);
 router.get('/orderdetail', orderdetail);
 router.get('/getallorders',getallorders);
@@ -97,8 +118,11 @@ router.get('/getHistory',getHistory)
 router.delete('/removestationery/:id',removestationery)
 
 router.get('/ShopkeeperLogin', ShopkeeperLogin);
+router.post('/registerShopkeeper', registerShopkeeper);
+//router.post('/verifyShopkeeperOtp', verifyShopkeeperOtp);
 
- router.post('/sendnotificationbyshopkeeper', sendnotificationbyshopkeeper);
+//router.post('/notifications', createNotification);
+router.post('/sendnotification', sendnotification);
 
 router.put('/confirmorder', confirmorder);
 
@@ -107,7 +131,7 @@ router.get('/receivednotification', receivednotification);
 router.delete('/removenotification',removenotification)
 
 router.delete('/removeorder/:order_id',removeorder)
-
+    
 router.get('/allordercount',allordercount)
 
 router.put('/updateorderstatus',updateorderstatus)
@@ -127,4 +151,21 @@ router.put('/approveStudentNotes',approveStudentNotes);
 router.put('/removeBrilliantStudent',removeBrilliantStudent);
 router.put('/rejectStudentNotes',rejectStudentNotes);
 router.delete('/deletenotes',deletenotes);
+router.get('/teachernotescount',countTeacherNotes);
+
 module.exports = router;
+      
+
+//admin routes
+router.post('/adminlogin', loginadmin);
+router.post('/addparent', addParent);
+router.get('/parents', getParents);
+router.delete('/parents/:id', deleteParent);
+
+
+//parent routes
+router.post('/parentlogin', loginparent);
+router.get('/enrolledchildren', getEnrolledChildren);
+router.post('/addwalletamount', addWalletAmount);
+router.get('/recenttransactions', getRecentTransactions); 
+
